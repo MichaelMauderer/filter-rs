@@ -7,4 +7,6 @@ awesome book [Kalman-and-Bayesian-Filters-in-Python](https://github.com/rlabbe/K
 
 */
 #![deny(missing_docs)]
+pub mod common;
+pub mod discrete_bayes;
 pub mod gh;
