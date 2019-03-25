@@ -2,47 +2,58 @@
 This module implements the linear Kalman filter
 */
 
-use nalgebra::{DefaultAllocator, DMatrix, DVector, Matrix, MatrixMN, Real, Scalar, U1, Vector, VectorN};
 use nalgebra::allocator::Allocator;
-use nalgebra::base::dimension::{Dim, DimName};
+use nalgebra::base::dimension::DimName;
+use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, Real, VectorN};
 
 #[allow(non_snake_case)]
-struct KalmanFilter<F>
-    where
-        F: Scalar,
+struct KalmanFilter<F, DimX, DimZ, DimU>
+where
+    F: Real,
+    DimX: DimName,
+    DimZ: DimName,
+    DimU: DimName,
+    DefaultAllocator: Allocator<F, DimX>
+        + Allocator<F, DimZ>
+        + Allocator<F, DimX, DimZ>
+        + Allocator<F, DimZ, DimX>
+        + Allocator<F, DimZ, DimZ>
+        + Allocator<F, DimX, DimX>
+        + Allocator<F, DimU>
+        + Allocator<F, DimX, DimU>,
 {
     /// Current state estimate.
-    x: DVector<F>,
+    x: VectorN<F, DimX>,
     /// Current state covariance matrix.
-    P: DMatrix<F>,
+    P: MatrixMN<F, DimX, DimX>,
     /// Prior (predicted) state estimate.
-    x_prior: DVector<F>,
+    x_prior: VectorN<F, DimX>,
     /// Prior (predicted) state covariance matrix.
-    P_prior: DMatrix<F>,
+    P_prior: MatrixMN<F, DimX, DimX>,
     /// Posterior (updated) state estimate.
-    x_post: DVector<F>,
+    x_post: VectorN<F, DimX>,
     ///Posterior (updated) state covariance matrix.
-    P_post: DMatrix<F>,
+    P_post: MatrixMN<F, DimX, DimX>,
     /// Last measurement
-    z: Option<DVector<F>>,
+    z: Option<VectorN<F, DimZ>>,
     /// Measurement noise matrix.
-    R: DMatrix<F>,
-    /// Process noise matrix.
-    Q: DMatrix<F>,
+    R: MatrixMN<F, DimZ, DimZ>,
+    /// MatrixMN<F, DimZ, DimZ>,
+    Q: MatrixMN<F, DimX, DimX>,
     /// Control transition matrix
-    B: Option<DMatrix<F>>,
+    B: Option<MatrixMN<F, DimX, DimU>>,
     /// State Transition matrix.
-    F: DMatrix<F>,
+    F: MatrixMN<F, DimX, DimX>,
     /// Measurement function.
-    H: DMatrix<F>,
+    H: MatrixMN<F, DimZ, DimX>,
     /// Residual of the update step.
-    y: DVector<F>,
+    y: VectorN<F, DimZ>,
     /// Kalman gain of the update step.
-    K: DMatrix<F>,
+    K: MatrixMN<F, DimX, DimZ>,
     /// System uncertainty (P projected to measurement space).
-    S: DMatrix<F>,
+    S: MatrixMN<F, DimZ, DimZ>,
     /// Inverse system uncertainty.
-    SI: DMatrix<F>,
+    SI: MatrixMN<F, DimZ, DimZ>,
     //    /// log-likelihood of the last measurement.
     //    log_likelihood: F,
     //    ///  likelihood of last measurement.
@@ -51,32 +62,39 @@ struct KalmanFilter<F>
     //    mahalanobis: F,
     /// Fading memory setting.
     alpha_sq: F,
-
-    dim_x: usize,
-    dim_z: usize,
 }
 
 #[allow(non_snake_case)]
-impl<F> KalmanFilter<F>
-    where
-        F: Real,
+impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
+where
+    F: Real,
+    DimX: DimName,
+    DimZ: DimName,
+    DimU: DimName,
+    DefaultAllocator: Allocator<F, DimX>
+        + Allocator<F, DimZ>
+        + Allocator<F, DimX, DimZ>
+        + Allocator<F, DimZ, DimX>
+        + Allocator<F, DimZ, DimZ>
+        + Allocator<F, DimX, DimX>
+        + Allocator<F, DimU>
+        + Allocator<F, DimX, DimU>,
 {
-    pub fn new(dim_x: usize, dim_z: usize) -> Self {
-        let x = DVector::from_element(dim_x, F::one());
-        let P: DMatrix<F> = DMatrix::identity(dim_x, dim_x);
-        let Q: DMatrix<F> = DMatrix::identity(dim_x, dim_x);
-        let F: DMatrix<F> = DMatrix::identity(dim_x, dim_x);
-        let H: DMatrix<F> = DMatrix::from_element(dim_z, dim_z, F::zero());
-        let R: DMatrix<F> = DMatrix::identity(dim_z, dim_z);
+    pub fn new() -> Self {
+        let x = VectorN::<F, DimX>::from_element(F::one());
+        let P = MatrixMN::<F, DimX, DimX>::identity();
+        let Q = MatrixMN::<F, DimX, DimX>::identity();
+        let F = MatrixMN::<F, DimX, DimX>::identity();
+        let H = MatrixMN::<F, DimZ, DimX>::from_element(F::zero());
+        let R = MatrixMN::<F, DimZ, DimZ>::identity();
         let alpha_sq = F::one();
-        //        let M: DMatrix<F> = DMatrix::from_element(dim_z, dim_z, F::zero());
 
         let z = None;
 
-        let K: DMatrix<F> = DMatrix::from_element(dim_x, dim_z, F::zero());
-        let y = DVector::from_element(dim_z, F::one());
-        let S = DMatrix::from_element(dim_z, dim_z, F::zero());
-        let SI = DMatrix::from_element(dim_z, dim_z, F::zero());
+        let K = MatrixMN::<F, DimX, DimZ>::from_element(F::zero());
+        let y = VectorN::<F, DimZ>::from_element(F::one());
+        let S = MatrixMN::<F, DimZ, DimZ>::from_element(F::zero());
+        let SI = MatrixMN::<F, DimZ, DimZ>::from_element(F::zero());
 
         let x_prior = x.clone();
         let P_prior = P.clone();
@@ -102,17 +120,15 @@ impl<F> KalmanFilter<F>
             S,
             SI,
             alpha_sq,
-            dim_x,
-            dim_z,
         }
     }
 
     pub fn predict(
         &mut self,
-        u: Option<&DVector<F>>,
-        B: Option<&DMatrix<F>>,
-        F: Option<&DMatrix<F>>,
-        Q: Option<&DMatrix<F>>,
+        u: Option<&VectorN<F, DimU>>,
+        B: Option<&MatrixMN<F, DimX, DimU>>,
+        F: Option<&MatrixMN<F, DimX, DimX>>,
+        Q: Option<&MatrixMN<F, DimX, DimX>>,
     ) {
         let B = if B.is_some() { B } else { self.B.as_ref() };
         let F = F.unwrap_or(&self.F);
@@ -130,7 +146,12 @@ impl<F> KalmanFilter<F>
         self.P_prior = self.P.clone();
     }
 
-    pub fn update(&mut self, z: &DVector<F>, R: Option<&DMatrix<F>>, H: Option<&DMatrix<F>>) {
+    pub fn update(
+        &mut self,
+        z: &VectorN<F, DimZ>,
+        R: Option<&MatrixMN<F, DimZ, DimZ>>,
+        H: Option<&MatrixMN<F, DimZ, DimX>>,
+    ) {
         let R = R.unwrap_or(&self.R);
         let H = H.unwrap_or(&self.H);
 
@@ -145,7 +166,7 @@ impl<F> KalmanFilter<F>
 
         self.x = self.x.clone() + self.K.clone() * self.y.clone();
 
-        let I_KH = DMatrix::identity(self.dim_x, self.dim_x) - self.K.clone() * H;
+        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - self.K.clone() * H;
         self.P = ((I_KH.clone() * self.P.clone()) * I_KH.transpose())
             + ((self.K.clone() * R) * self.K.clone().transpose());
 
@@ -162,14 +183,16 @@ mod tests {
     use assert_approx_eq::assert_approx_eq;
 
     use super::*;
+    use nalgebra::base::Vector1;
+    use nalgebra::U1;
 
     #[test]
     fn test_univariate_kf_setup() {
-        let mut kf = KalmanFilter::new(1, 1);
+        let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::new();
 
         for i in 0..1000 {
             let zf = i as f32;
-            let z: DVector<f32> = DVector::from_vec(vec![zf]);
+            let z = Vector1::from_vec(vec![zf]);
             kf.predict(None, None, None, None);
             kf.update(&z, None, None);
             assert_approx_eq!(zf, kf.z.clone().unwrap()[0]);
