@@ -5,12 +5,12 @@ use std::num::Wrapping;
 
 use num_traits::Float;
 
-/// Determines how the convolution is computed. This mostly effects behaviour at the boundaries.
+/// Determines how the convolution is computed. This mostly affects behaviour at the boundaries.
 pub(crate) enum ConvolutionMode<F> {
     /// Returns the convolution at each point of overlap, assuming the signals wrap around.
     Wrap,
     /// Returns the convolution at each point of overlap, assuming the signals
-    /// are extended by the given value around.
+    /// are extended by the given value.
     Extended(F),
 }
 
@@ -35,12 +35,8 @@ fn convolve_extended<F: Float>(signal: &[F], window: &[F], c: F) -> Vec<F> {
         let mut x = F::zero();
         for j in 0..n {
             let s_ij = {
-                let ix = i + j - n / 2;
-                if ix < 0 {
-                    c
-                } else {
-                    *signal.get(ix as usize).unwrap_or(&c)
-                }
+                let ix = i - j + (n / 2);
+                *signal.get(ix as usize).unwrap_or(&c)
             };
             let w_ij = *window.get(j as usize).unwrap_or(&c);
             x = x + s_ij * w_ij;
@@ -61,8 +57,7 @@ fn convolve_wrap<F: Float>(signal: &[F], window: &[F]) -> Vec<F> {
     for i in 0..m {
         for j in 0..n {
             let s_ij = {
-                let ix = (i + j - (n / 2)) % m;
-                let ix = if ix < 0 { ix + m } else { ix };
+                let ix = (m + i - j + (n / 2)) % m;
                 signal[ix as usize]
             };
             let w_ij = window[j as usize];
@@ -75,7 +70,7 @@ fn convolve_wrap<F: Float>(signal: &[F], window: &[F]) -> Vec<F> {
 fn roll<T: Copy>(a: &[T], shift: i64) -> Vec<T> {
     let mut out = Vec::with_capacity(a.len());
     for i in 0..a.len() as i64 {
-        let ix = (Wrapping(i) - Wrapping(shift)).0 % (a.len() as i64 - 1);
+        let ix = (Wrapping(i) - Wrapping(shift)).0 % (a.len() as i64);
         let ix = if ix < 0 { ix + a.len() as i64 } else { ix };
         out.push(a[ix as usize])
     }
@@ -111,47 +106,36 @@ mod tests {
 
     #[test]
     fn test_convolve_extended() {
-        let a: [f64; 3] = [1.0, 2.0, 3.0];
-        let b: [f64; 3] = [0.0, 1.0, 0.5];
+        let a = &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let b = &[0.0, 1.0, 0.5];
 
-        let c = convolve(&a, &b, ConvolutionMode::Extended(10.0));
+        let result = convolve(a, b, ConvolutionMode::Extended(100.0));
 
-        debug_assert_eq!(3, c.len());
-        assert_approx_eq!(2.0, c[0]);
-        assert_approx_eq!(3.5, c[1]);
-        assert_approx_eq!(8.0, c[2]);
+        let reference = [51.0, 2.5, 4.0, 5.5, 7.0, 8.5, 10.0, 11.5, 13.0];
+        dbg!(&result);
+        dbg!(&reference);
+
+        debug_assert_eq!(reference.len(), result.len());
+        for i in 0..reference.len() {
+            assert_approx_eq!(reference[i], result[i]);
+        }
     }
 
     #[test]
-    fn test_convolve_wrap() {
-        let a: [f64; 3] = [1.0, 2.0, 3.0];
-        let b: [f64; 3] = [0.0, 1.0, 0.5];
+    fn test_convolve_extended2() {
+        let a = &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let b = &[0.0, 1.0, 0.5, 10.0];
 
-        let c = convolve_wrap(&a, &b);
+        let result = convolve(a, b, ConvolutionMode::Extended(100.0));
 
-        debug_assert_eq!(3, c.len());
-        dbg!(&c);
-        assert_approx_eq!(2.0, c[0]);
-        assert_approx_eq!(3.5, c[1]);
-        assert_approx_eq!(3.5, c[2]);
-    }
+        let reference = [1002.5, 14., 25.5, 37., 48.5, 60., 71.5, 83., 184.5];
+        dbg!(&result);
+        dbg!(&reference);
 
-    #[test]
-    fn test_convolve_wrap2() {
-        let a = vec![3.0, 1.0, 2.0, 3.0, 2.0, 1.0, 1.0];
-        let b = vec![0.0, 1.0, 0.5];
-
-        let c = convolve_wrap(&a, &b);
-
-        debug_assert_eq!(7, c.len());
-        dbg!(&c);
-        assert_approx_eq!(3.5, c[0]);
-        assert_approx_eq!(2.0, c[1]);
-        assert_approx_eq!(3.5, c[2]);
-        assert_approx_eq!(4.0, c[3]);
-        assert_approx_eq!(2.5, c[4]);
-        assert_approx_eq!(1.5, c[5]);
-        assert_approx_eq!(2.5, c[6]);
+        debug_assert_eq!(reference.len(), result.len());
+        for i in 0..reference.len() {
+            assert_approx_eq!(reference[i], result[i]);
+        }
     }
 
     #[test]
@@ -171,5 +155,59 @@ mod tests {
         debug_assert_eq!(5, c[7]);
         debug_assert_eq!(6, c[8]);
         debug_assert_eq!(7, c[9]);
+    }
+
+    #[test]
+    fn test_roll_negative() {
+        let a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let c = roll(&a, -2);
+
+        debug_assert_eq!(10, c.len());
+        debug_assert_eq!(2, c[0]);
+        debug_assert_eq!(3, c[1]);
+        debug_assert_eq!(4, c[2]);
+        debug_assert_eq!(5, c[3]);
+        debug_assert_eq!(6, c[4]);
+        debug_assert_eq!(7, c[5]);
+        debug_assert_eq!(8, c[6]);
+        debug_assert_eq!(9, c[7]);
+        debug_assert_eq!(0, c[8]);
+        debug_assert_eq!(1, c[9]);
+    }
+
+    #[test]
+    fn test_shift_extend() {
+        let a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let c = shift_extend(&a, 2, 100);
+
+        debug_assert_eq!(10, c.len());
+        debug_assert_eq!(100, c[0]);
+        debug_assert_eq!(100, c[1]);
+        debug_assert_eq!(0, c[2]);
+        debug_assert_eq!(1, c[3]);
+        debug_assert_eq!(2, c[4]);
+        debug_assert_eq!(3, c[5]);
+        debug_assert_eq!(4, c[6]);
+        debug_assert_eq!(5, c[7]);
+        debug_assert_eq!(6, c[8]);
+        debug_assert_eq!(7, c[9]);
+
+        let a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let c = shift_extend(&a, -2, 100);
+
+        debug_assert_eq!(10, c.len());
+        debug_assert_eq!(2, c[0]);
+        debug_assert_eq!(3, c[1]);
+        debug_assert_eq!(4, c[2]);
+        debug_assert_eq!(5, c[3]);
+        debug_assert_eq!(6, c[4]);
+        debug_assert_eq!(7, c[5]);
+        debug_assert_eq!(8, c[6]);
+        debug_assert_eq!(9, c[7]);
+        debug_assert_eq!(100, c[8]);
+        debug_assert_eq!(100, c[9]);
     }
 }

@@ -100,6 +100,35 @@ mod tests {
     }
 
     #[test]
+    fn test_prediction_extend_kernel_4() {
+        let pdf = {
+            let mut pdf = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+            normalize(&mut pdf);
+            pdf
+        };
+
+        let kernel = [0.5, 0.5, 0.5, 0.5];
+
+        let result = predict(&pdf, -1, &kernel, EdgeHandling::Constant(99.0));
+        let reference = [
+            4.95000000e+01,
+            6.52189307e-18,
+            -8.16487636e-19,
+            1.78559758e-18,
+            4.95000000e+01,
+            9.90000000e+01,
+            1.48500000e+02,
+        ];
+        dbg!(&result);
+        dbg!(&reference);
+
+        debug_assert_eq!(reference.len(), result.len());
+        for i in 0..reference.len() {
+            assert_approx_eq!(reference[i], result[i]);
+        }
+    }
+
+    #[test]
     fn test_prediction_wrap_kernel_4() {
         let pdf = {
             let mut pdf = [0.0, 1.0, 2.0, 4.0, 8.0, 16.0, 8.0];
@@ -107,11 +136,34 @@ mod tests {
             pdf
         };
 
-        let kernel = [0.5, 0.5, 0.5, 0.5];
+        let kernel = [0.25, 0.5, 0.125, 0.125];
 
         let result = predict(&pdf, 3, &kernel, EdgeHandling::Wrap);
         let reference = [
             0.29487179, 0.17948718, 0.08333333, 0.05128205, 0.05448718, 0.11217949, 0.22435897,
+        ];
+        dbg!(&result);
+        dbg!(&reference);
+
+        debug_assert_eq!(reference.len(), result.len());
+        for i in 0..reference.len() {
+            assert_approx_eq!(reference[i], result[i]);
+        }
+    }
+
+    #[test]
+    fn test_prediction_wrap_kernel_5() {
+        let pdf = {
+            let mut pdf = [0.0, 1.0, 2.0, 4.0, 8.0, 16.0, 8.0];
+            normalize(&mut pdf);
+            pdf
+        };
+
+        let kernel = [0.25, 0.5, 0.125, 0.125, 10.0];
+
+        let result = predict(&pdf, 3, &kernel, EdgeHandling::Wrap);
+        let reference = [
+            0.80769231, 1.20512821, 2.13461538, 4.15384615, 2.10576923, 0.11217949, 0.48076923,
         ];
         dbg!(&result);
         dbg!(&reference);
@@ -130,7 +182,7 @@ mod tests {
             pdf
         };
 
-        let kernel = [0.5, 0.5, 0.5, 0.5];
+        let kernel = [0.25, 0.5, 0.125, 0.125];
 
         let result = predict(&pdf, 3, &kernel, EdgeHandling::Constant(10.0));
         let reference = [
