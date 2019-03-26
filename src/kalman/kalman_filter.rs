@@ -23,37 +23,37 @@ where
         + Allocator<F, DimX, DimU>,
 {
     /// Current state estimate.
-    x: VectorN<F, DimX>,
+    pub x: VectorN<F, DimX>,
     /// Current state covariance matrix.
-    P: MatrixMN<F, DimX, DimX>,
+    pub P: MatrixMN<F, DimX, DimX>,
     /// Prior (predicted) state estimate.
-    x_prior: VectorN<F, DimX>,
+    pub x_prior: VectorN<F, DimX>,
     /// Prior (predicted) state covariance matrix.
-    P_prior: MatrixMN<F, DimX, DimX>,
+    pub P_prior: MatrixMN<F, DimX, DimX>,
     /// Posterior (updated) state estimate.
-    x_post: VectorN<F, DimX>,
+    pub x_post: VectorN<F, DimX>,
     ///Posterior (updated) state covariance matrix.
-    P_post: MatrixMN<F, DimX, DimX>,
+    pub P_post: MatrixMN<F, DimX, DimX>,
     /// Last measurement
-    z: Option<VectorN<F, DimZ>>,
+    pub z: Option<VectorN<F, DimZ>>,
     /// Measurement noise matrix.
-    R: MatrixMN<F, DimZ, DimZ>,
+    pub R: MatrixMN<F, DimZ, DimZ>,
     /// MatrixMN<F, DimZ, DimZ>,
-    Q: MatrixMN<F, DimX, DimX>,
+    pub Q: MatrixMN<F, DimX, DimX>,
     /// Control transition matrix
-    B: Option<MatrixMN<F, DimX, DimU>>,
+    pub B: Option<MatrixMN<F, DimX, DimU>>,
     /// State Transition matrix.
-    F: MatrixMN<F, DimX, DimX>,
+    pub F: MatrixMN<F, DimX, DimX>,
     /// Measurement function.
-    H: MatrixMN<F, DimZ, DimX>,
+    pub H: MatrixMN<F, DimZ, DimX>,
     /// Residual of the update step.
-    y: VectorN<F, DimZ>,
+    pub y: VectorN<F, DimZ>,
     /// Kalman gain of the update step.
-    K: MatrixMN<F, DimX, DimZ>,
+    pub K: MatrixMN<F, DimX, DimZ>,
     /// System uncertainty (P projected to measurement space).
-    S: MatrixMN<F, DimZ, DimZ>,
+    pub S: MatrixMN<F, DimZ, DimZ>,
     /// Inverse system uncertainty.
-    SI: MatrixMN<F, DimZ, DimZ>,
+    pub SI: MatrixMN<F, DimZ, DimZ>,
     //    /// log-likelihood of the last measurement.
     //    log_likelihood: F,
     //    ///  likelihood of last measurement.
@@ -61,7 +61,7 @@ where
     //    /// mahalanobis distance of the innovation.
     //    mahalanobis: F,
     /// Fading memory setting.
-    alpha_sq: F,
+    pub alpha_sq: F,
 }
 
 #[allow(non_snake_case)]
@@ -175,16 +175,18 @@ where
         self.z = Some(z.clone());
         self.x_post = self.x.clone();
         self.P_post = self.P.clone();
+
+        (&self.x, &self.P)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
-
-    use super::*;
     use nalgebra::base::Vector1;
     use nalgebra::U1;
+
+    use super::*;
 
     #[test]
     fn test_univariate_kf_setup() {
