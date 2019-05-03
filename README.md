@@ -44,28 +44,28 @@ for i in 0..1000 {
 
 ### Current state
 
-[ ] Linear Kalman Filter
-[ ] Fixed Lag Smoother
-[ ]Square Root Kalman Filter
-[ ]Information Filter
-[ ] Fading Kalman Filter
-[ ] MMAE Filter Bank
-[ ] IMM Estimator
+* [ ] Linear Kalman Filter
+* [ ] Fixed Lag Smoother
+* [ ] Square Root Kalman Filter
+* [ ] Information Filter
+* [ ] Fading Kalman Filter
+* [ ] MMAE Filter Bank
+* [ ] IMM Estimator
 
-[ ] Extended Kalman Filter
-[ ] Unscented Kalman Filter
-[ ] Ensemble Kalman Filter
+* [ ] Extended Kalman Filter
+* [ ] Unscented Kalman Filter
+* [ ] Ensemble Kalman Filter
 
-[ ] Discrete Bayes
+* [ ] Discrete Bayes
 
-[ ] GH-Filter
-[ ] GHK-Filter
+* [ ] GH-Filter
+* [ ] GHK-Filter
 
-[ ] Fading Memory Filter
+* [ ] Fading Memory Filter
 
-[ ] H-Infinity Filter
+* [ ] H-Infinity Filter
 
-[ ] Least Squares Filter
+* [ ] Least Squares Filter
 
 
 
