@@ -6,6 +6,7 @@ use std::num::Wrapping;
 use num_traits::Float;
 
 /// Determines how the convolution is computed. This mostly affects behaviour at the boundaries.
+#[derive(Debug)]
 pub(crate) enum ConvolutionMode<F> {
     /// Returns the convolution at each point of overlap, assuming the signals wrap around.
     Wrap,

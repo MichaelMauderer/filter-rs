@@ -26,6 +26,7 @@ use num_traits::Float;
 /// *  Labbe, "Kalman and Bayesian Filters in Python" http://rlabbe.github.io/Kalman-and-Bayesian-Filters-in-Python
 /// *  Brookner, "Tracking and Kalman Filters Made Easy". John Wiley and Sons, 1998.
 ///
+#[derive(Debug)]
 pub struct GHFilter<T> {
     /// Filter g gain parameter.
     pub g: T,
@@ -136,6 +137,7 @@ impl<T: FloatCore> GHFilter<T> {
 /// # References
 /// * Brookner, "Tracking and Kalman Filters Made Easy". John Wiley and Sons, 1998.
 ///
+#[derive(Debug)]
 pub struct GHKFilter<T> {
     /// Filter g gain parameter.
     pub g: T,

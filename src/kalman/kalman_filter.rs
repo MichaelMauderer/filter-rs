@@ -18,6 +18,7 @@ use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, RealField, VectorN};
 ///       https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python
 ///
 #[allow(non_snake_case)]
+#[derive(Debug)]
 pub struct KalmanFilter<F, DimX, DimZ, DimU>
     where
         F: RealField,

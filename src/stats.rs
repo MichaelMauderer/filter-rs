@@ -6,6 +6,7 @@ use std::ops::{Add, Mul};
 use num_traits::Float;
 
 /// Represents a gaussian distribution with mean and variance..
+#[derive(Debug)]
 pub struct GaussianDistribution<F: Float> {
     /// Mean of the distribution.
     pub mean: F,

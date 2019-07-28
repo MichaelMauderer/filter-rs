@@ -49,6 +49,7 @@ pub fn update<F: Float>(likelihood: &[F], prior: &[F]) -> Result<Vec<F>, ()> {
 }
 
 /// Determines what happens at the boundaries of the probability distribution.
+#[derive(Debug)]
 pub enum EdgeHandling<F> {
     /// the  probability distribution is shifted and the given value is used to used to fill in missing elements.
     Constant(F),
