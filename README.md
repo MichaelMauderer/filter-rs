@@ -30,15 +30,29 @@ let fgh = GHFilter::new(x0, dx0, g, h, dt);
 
 Univariate Kalman Filter
 -------------------------
-```
-let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::new();
 
-for i in 0..1000 {
-    let zf = i as f32;
-    let z = Vector1::from_vec(vec![zf]);
-    kf.predict(None, None, None, None);
+The Kalman filter has to be initialised with sensible values. 
+A default filter can be constructed but should not be used.  
+
+```
+let mut kf: KalmanFilter<f64, U2, U1, U1> = KalmanFilter::default();
+
+kf.x = Vector2::new(2.0, 0.0);
+kf.F = Matrix2::new(
+    1.0, 1.0,
+    0.0, 1.0,
+);
+kf.H = Vector2::new(1.0, 0.0).transpose();
+kf.P *= 1000.0;
+kf.R = Matrix1::new(5.0);
+kf.Q = Matrix2::repeat(0.0001);
+
+let mut results = Vec::default();
+for t in 0..100 {
+    let z = Vector1::new(t as f64);
     kf.update(&z, None, None);
-    assert_approx_eq!(zf, kf.z.clone().unwrap()[0]);
+    kf.predict(None, None, None, None);
+    results.push(kf.x.clone());
 }
 ```
 
