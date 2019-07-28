@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_univariate_kf_setup() {
-        let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::default();
+        let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::<f32, U1, U1, U1>::default();
 
         for i in 0..1000 {
             let zf = i as f32;
