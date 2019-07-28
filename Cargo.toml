@@ -1,10 +1,14 @@
 [package]
 name = "filter"
-version = "0.1.0"
+version = "0.1.0-dev"
 authors = ["Michael Mauderer <michael@michaelmauderer.com>"]
 edition = "2018"
+repository = "https://github.com/MichaelMauderer/filter-rs"
+license = "MIT"
+readme = "README.md"
+description = "Kalman filters and other optimal and non-optimal estimation filters in Rust."
 
 [dependencies]
-nalgebra = "0.17.0"
+nalgebra = "0.18"
 num-traits = "0.2"
 assert_approx_eq = "1.1.0"
