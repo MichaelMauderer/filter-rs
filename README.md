@@ -6,13 +6,14 @@
 This port is a work in progress and incomplete. To learn more about Kalman filters check out Roger R Labbe Jr.'s 
 awesome book [Kalman-and-Bayesian-Filters-in-Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python).
 
-This library will grow as I work through the book myself and the API will most likely evolve and oxidize, too.
-Feedback on the API design is always appreciated.
+This library will grow as I work through the book myself and the API will most likely evolve and become more rustic, too.
+Feedback on the API design is always appreciated, as well as pull requests for missing features. 
 
 Examples
 =========
 
-The API is based on `nalgebra` matrices with structural genericity.
+The API is based on `nalgebra` matrices with structural genericity. That means, that the shapes of inputs can 
+statically checked and are always correct at runtime.
 
 GH Filter
 ----------
@@ -44,6 +45,8 @@ for i in 0..1000 {
 
 ### Current state
 
+Tickboxes will be filled for each module that has feature parity with the filtyerpy library. 
+
 * [ ] Linear Kalman Filter
 * [ ] Fixed Lag Smoother
 * [ ] Square Root Kalman Filter
@@ -66,6 +69,11 @@ for i in 0..1000 {
 * [ ] H-Infinity Filter
 
 * [ ] Least Squares Filter
+
+License
+=======
+
+This project is licensed under the MIT License - see the LICENSE file for details
 
 
 
