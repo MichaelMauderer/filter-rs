@@ -294,7 +294,7 @@ impl<F, DimX, DimZ, DimU> Default for KalmanFilter<F, DimX, DimZ, DimU>
 mod tests {
     use assert_approx_eq::assert_approx_eq;
     use nalgebra::base::Vector1;
-    use nalgebra::U1;
+    use nalgebra::{U1, U2, Vector2, Matrix2, Matrix1};
 
     use super::*;
 
@@ -308,6 +308,34 @@ mod tests {
             kf.predict(None, None, None, None);
             kf.update(&z, None, None);
             assert_approx_eq!(zf, kf.z.clone().unwrap()[0]);
+        }
+    }
+
+    #[test]
+    fn test_1d_reference() {
+        let mut kf: KalmanFilter<f64, U2, U1, U1> = KalmanFilter::default();
+
+        kf.x = Vector2::new(2.0, 0.0);
+        kf.F = Matrix2::new(
+            1.0, 1.0,
+            0.0, 1.0,
+        );
+        kf.H = Vector2::new(1.0, 0.0).transpose();
+        kf.P *= 1000.0;
+        kf.R = Matrix1::new(5.0);
+        kf.Q = Matrix2::repeat(0.0001);
+
+        let mut results = Vec::default();
+        for t in 0..100 {
+            let z = Vector1::new(t as f64);
+            kf.update(&z, None, None);
+            kf.predict(None, None, None, None);
+            results.push(kf.x.clone());
+        }
+        // This matches the results from an equivalent filterpy filter.
+        assert_approx_eq!(results[0][0], 0.0099502487);
+        for i in 1..100 {
+            assert_approx_eq!(results[i][0], i as f64 + 1.0, 0.05)
         }
     }
 }
