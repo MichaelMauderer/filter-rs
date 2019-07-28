@@ -4,7 +4,7 @@ This module implements the linear Kalman filter
 
 use nalgebra::allocator::Allocator;
 use nalgebra::base::dimension::DimName;
-use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, Real, VectorN};
+use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, RealField, VectorN};
 
 /// Implements a Kalman filter.
 /// For a detailed explanation, see the excellent book Kalman and Bayesian
@@ -20,7 +20,7 @@ use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, Real, VectorN};
 #[allow(non_snake_case)]
 pub struct KalmanFilter<F, DimX, DimZ, DimU>
     where
-        F: Real,
+        F: RealField,
         DimX: DimName,
         DimZ: DimName,
         DimU: DimName,
@@ -72,7 +72,7 @@ pub struct KalmanFilter<F, DimX, DimZ, DimU>
 #[allow(non_snake_case)]
 impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
     where
-        F: Real,
+        F: RealField,
         DimX: DimName,
         DimZ: DimName,
         DimU: DimName,
@@ -232,7 +232,7 @@ impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
 #[allow(non_snake_case)]
 impl<F, DimX, DimZ, DimU> Default for KalmanFilter<F, DimX, DimZ, DimU>
     where
-        F: Real,
+        F: RealField,
         DimX: DimName,
         DimZ: DimName,
         DimU: DimName,
