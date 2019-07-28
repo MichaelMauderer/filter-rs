@@ -6,27 +6,25 @@ use nalgebra::allocator::Allocator;
 use nalgebra::base::dimension::DimName;
 use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, Real, VectorN};
 
-#[allow(non_snake_case)]
-struct FilterOutputSample<F, DimX>
-where
-    F: Real,
-    DimX: DimName,
-    DefaultAllocator: Allocator<F, DimX> + Allocator<F, DimX, DimX>,
-{
-    means: VectorN<F, DimX>,
-    covariance: MatrixMN<F, DimX, DimX>,
-    means_predictions: VectorN<F, DimX>,
-    covariance_predictions: MatrixMN<F, DimX, DimX>,
-}
-
+/// Implements a Kalman filter.
+/// For a detailed explanation, see the excellent book Kalman and Bayesian
+/// Filters in Python [1]_. The book applies also for this Rust implementation and all functions
+/// should works similar with minor changes due to language differences.
+///
+///  References
+///    ----------
+///
+///    .. [1] Roger Labbe. "Kalman and Bayesian Filters in Python"
+///       https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python
+///
 #[allow(non_snake_case)]
 pub struct KalmanFilter<F, DimX, DimZ, DimU>
-where
-    F: Real,
-    DimX: DimName,
-    DimZ: DimName,
-    DimU: DimName,
-    DefaultAllocator: Allocator<F, DimX>
+    where
+        F: Real,
+        DimX: DimName,
+        DimZ: DimName,
+        DimU: DimName,
+        DefaultAllocator: Allocator<F, DimX>
         + Allocator<F, DimZ>
         + Allocator<F, DimX, DimZ>
         + Allocator<F, DimZ, DimX>
@@ -67,24 +65,18 @@ where
     pub S: MatrixMN<F, DimZ, DimZ>,
     /// Inverse system uncertainty.
     pub SI: MatrixMN<F, DimZ, DimZ>,
-    //    /// log-likelihood of the last measurement.
-    //    log_likelihood: F,
-    //    ///  likelihood of last measurement.
-    //    likelihood: F,
-    //    /// mahalanobis distance of the innovation.
-    //    mahalanobis: F,
     /// Fading memory setting.
     pub alpha_sq: F,
 }
 
 #[allow(non_snake_case)]
 impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
-where
-    F: Real,
-    DimX: DimName,
-    DimZ: DimName,
-    DimU: DimName,
-    DefaultAllocator: Allocator<F, DimX>
+    where
+        F: Real,
+        DimX: DimName,
+        DimZ: DimName,
+        DimU: DimName,
+        DefaultAllocator: Allocator<F, DimX>
         + Allocator<F, DimZ>
         + Allocator<F, DimX, DimZ>
         + Allocator<F, DimZ, DimX>
@@ -93,7 +85,168 @@ where
         + Allocator<F, DimU>
         + Allocator<F, DimX, DimU>,
 {
-    pub fn new() -> Self {
+    /// Predict next state (prior) using the Kalman filter state propagation equations.
+    pub fn predict(
+        &mut self,
+        u: Option<&VectorN<F, DimU>>,
+        B: Option<&MatrixMN<F, DimX, DimU>>,
+        F: Option<&MatrixMN<F, DimX, DimX>>,
+        Q: Option<&MatrixMN<F, DimX, DimX>>,
+    ) {
+        let B = if B.is_some() { B } else { self.B.as_ref() };
+        let F = F.unwrap_or(&self.F);
+        let Q = Q.unwrap_or(&self.Q);
+
+        if B.is_some() && u.is_some() {
+            self.x = F * self.x.clone() + B.unwrap() * u.unwrap();
+        } else {
+            self.x = F * self.x.clone();
+        }
+
+        self.P = ((F * self.P.clone()) * F.transpose()) * self.alpha_sq + Q;
+
+        self.x_prior = self.x.clone();
+        self.P_prior = self.P.clone();
+    }
+
+    /// Add a new measurement (z) to the Kalman filter.
+    pub fn update(
+        &mut self,
+        z: &VectorN<F, DimZ>,
+        R: Option<&MatrixMN<F, DimZ, DimZ>>,
+        H: Option<&MatrixMN<F, DimZ, DimX>>,
+    ) {
+        let R = R.unwrap_or(&self.R);
+        let H = H.unwrap_or(&self.H);
+
+        self.y = z - H * &self.x;
+
+        let PHT = self.P.clone() * H.transpose();
+        self.S = H * &PHT + R;
+
+        self.SI = self.S.clone().try_inverse().unwrap();
+
+        self.K = PHT * &self.SI;
+
+        self.x = &self.x + &self.K * &self.y;
+
+        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - &self.K * H;
+        self.P =
+            ((I_KH.clone() * &self.P) * I_KH.transpose()) + ((&self.K * R) * &self.K.transpose());
+
+        self.z = Some(z.clone());
+        self.x_post = self.x.clone();
+        self.P_post = self.P.clone();
+    }
+
+    /// Predict state (prior) using the Kalman filter state propagation equations.
+    /// Only x is updated, P is left unchanged.
+    pub fn predict_steadystate(
+        &mut self,
+        u: Option<&VectorN<F, DimU>>,
+        B: Option<&MatrixMN<F, DimX, DimU>>,
+    ) {
+        let B = if B.is_some() { B } else { self.B.as_ref() };
+
+        if B.is_some() && u.is_some() {
+            self.x = &self.F * &self.x + B.unwrap() * u.unwrap();
+        } else {
+            self.x = &self.F * &self.x;
+        }
+
+        self.x_prior = self.x.clone();
+        self.P_prior = self.P.clone();
+    }
+
+    /// Add a new measurement (z) to the Kalman filter without recomputing the Kalman gain K,
+    /// the state covariance P, or the system uncertainty S.
+    pub fn update_steadystate(&mut self, z: &VectorN<F, DimZ>) {
+        self.y = z - &self.H * &self.x;
+        self.x = &self.x + &self.K * &self.y;
+
+        self.z = Some(z.clone());
+        self.x_post = self.x.clone();
+        self.P_post = self.P.clone();
+    }
+
+    /// Predicts the next state of the filter and returns it without altering the state of the filter.
+    pub fn get_prediction(
+        &self,
+        u: Option<&VectorN<F, DimU>>,
+    ) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
+        let Q = &self.Q;
+        let F = &self.F;
+        let P = &self.P;
+        let FT = F.transpose();
+
+        let B = self.B.as_ref();
+        let x = {
+            if B.is_some() && u.is_some() {
+                F * &self.x + B.unwrap() * u.unwrap()
+            } else {
+                F * &self.x
+            }
+        };
+
+        let P = ((F * P) * FT) * self.alpha_sq + Q;
+
+        (x, P)
+    }
+
+    ///  Computes the new estimate based on measurement `z` and returns it without altering the state of the filter.
+    pub fn get_update(&self, z: &VectorN<F, DimZ>) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
+        let R = &self.R;
+        let H = &self.H;
+        let P = &self.P;
+        let x = &self.x;
+
+        let y = z - H * &self.x;
+
+        let PHT = &(P * H.transpose());
+
+        let S = H * PHT + R;
+        let SI = S.try_inverse().unwrap();
+
+        let K = &(PHT * SI);
+
+        let x = x + K * y;
+
+        let I_KH = &(DMatrix::identity(DimX::dim(), DimX::dim()) - (K * H));
+
+        let P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * &K.transpose());
+
+        (x, P)
+    }
+
+    /// Returns the residual for the given measurement (z). Does not alter the state of the filter.
+    pub fn residual_of(&self, z: &VectorN<F, DimZ>) -> VectorN<F, DimZ> {
+        z - (&self.H * &self.x_prior)
+    }
+
+    /// Helper function that converts a state into a measurement.
+    pub fn measurement_of_state(&self, x: &VectorN<F, DimX>) -> VectorN<F, DimZ> {
+        &self.H * x
+    }
+}
+
+#[allow(non_snake_case)]
+impl<F, DimX, DimZ, DimU> Default for KalmanFilter<F, DimX, DimZ, DimU>
+    where
+        F: Real,
+        DimX: DimName,
+        DimZ: DimName,
+        DimU: DimName,
+        DefaultAllocator: Allocator<F, DimX>
+        + Allocator<F, DimZ>
+        + Allocator<F, DimX, DimZ>
+        + Allocator<F, DimZ, DimX>
+        + Allocator<F, DimZ, DimZ>
+        + Allocator<F, DimX, DimX>
+        + Allocator<F, DimU>
+        + Allocator<F, DimX, DimU>,
+{
+    /// Returns a Kalman filter initialised with default parameters.
+    fn default() -> Self {
         let x = VectorN::<F, DimX>::from_element(F::one());
         let P = MatrixMN::<F, DimX, DimX>::identity();
         let Q = MatrixMN::<F, DimX, DimX>::identity();
@@ -135,140 +288,6 @@ where
             alpha_sq,
         }
     }
-
-    pub fn predict(
-        &mut self,
-        u: Option<&VectorN<F, DimU>>,
-        B: Option<&MatrixMN<F, DimX, DimU>>,
-        F: Option<&MatrixMN<F, DimX, DimX>>,
-        Q: Option<&MatrixMN<F, DimX, DimX>>,
-    ) {
-        let B = if B.is_some() { B } else { self.B.as_ref() };
-        let F = F.unwrap_or(&self.F);
-        let Q = Q.unwrap_or(&self.Q);
-
-        if B.is_some() && u.is_some() {
-            self.x = F * self.x.clone() + B.unwrap() * u.unwrap();
-        } else {
-            self.x = F * self.x.clone();
-        }
-
-        self.P = ((F * self.P.clone()) * F.transpose()) * self.alpha_sq + Q;
-
-        self.x_prior = self.x.clone();
-        self.P_prior = self.P.clone();
-    }
-
-    pub fn update(
-        &mut self,
-        z: &VectorN<F, DimZ>,
-        R: Option<&MatrixMN<F, DimZ, DimZ>>,
-        H: Option<&MatrixMN<F, DimZ, DimX>>,
-    ) {
-        let R = R.unwrap_or(&self.R);
-        let H = H.unwrap_or(&self.H);
-
-        self.y = z - H * &self.x;
-
-        let PHT = self.P.clone() * H.transpose();
-        self.S = H * &PHT + R;
-
-        self.SI = self.S.clone().try_inverse().unwrap();
-
-        self.K = PHT * &self.SI;
-
-        self.x = &self.x + &self.K * &self.y;
-
-        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - &self.K * H;
-        self.P =
-            ((I_KH.clone() * &self.P) * I_KH.transpose()) + ((&self.K * R) * &self.K.transpose());
-
-        self.z = Some(z.clone());
-        self.x_post = self.x.clone();
-        self.P_post = self.P.clone();
-    }
-
-
-    pub fn predict_steadystate(
-        &mut self,
-        u: Option<&VectorN<F, DimU>>,
-        B: Option<&MatrixMN<F, DimX, DimU>>,
-    ) {
-        let B = if B.is_some() { B } else { self.B.as_ref() };
-
-        if B.is_some() && u.is_some() {
-            self.x = &self.F * &self.x + B.unwrap() * u.unwrap();
-        } else {
-            self.x = &self.F * &self.x;
-        }
-
-        self.x_prior = self.x.clone();
-        self.P_prior = self.P.clone();
-    }
-
-    pub fn update_steadystate(&mut self, z: &VectorN<F, DimZ>) {
-        self.y = z - &self.H * &self.x;
-        self.x = &self.x + &self.K * &self.y;
-
-        self.z = Some(z.clone());
-        self.x_post = self.x.clone();
-        self.P_post = self.P.clone();
-    }
-
-    pub fn get_prediction(
-        &self,
-        u: Option<&VectorN<F, DimU>>,
-    ) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
-        let Q = &self.Q;
-        let F = &self.F;
-        let P = &self.P;
-        let FT = F.transpose();
-
-        let B = self.B.as_ref();
-        let x = {
-            if B.is_some() && u.is_some() {
-                F * &self.x + B.unwrap() * u.unwrap()
-            } else {
-                F * &self.x
-            }
-        };
-
-        let P = ((F * P) * FT) * self.alpha_sq + Q;
-
-        (x, P)
-    }
-
-    pub fn get_update(&self, z: &VectorN<F, DimZ>) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
-        let R = &self.R;
-        let H = &self.H;
-        let P = &self.P;
-        let x = &self.x;
-
-        let y = z - H * &self.x;
-
-        let PHT = &(P * H.transpose());
-
-        let S = H * PHT + R;
-        let SI = S.try_inverse().unwrap();
-
-        let K = &(PHT * SI);
-
-        let x = x + K * y;
-
-        let I_KH = &(DMatrix::identity(DimX::dim(), DimX::dim()) - (K * H));
-
-        let P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * &K.transpose());
-
-        (x, P)
-    }
-
-    pub fn residual_of(&self, z: &VectorN<F, DimZ>) -> VectorN<F, DimZ> {
-        z - (&self.H * &self.x_prior)
-    }
-
-    pub fn measurement_of_state(&self, x: &VectorN<F, DimX>) -> VectorN<F, DimZ> {
-        &self.H * x
-    }
 }
 
 #[cfg(test)]
@@ -281,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_univariate_kf_setup() {
-        let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::new();
+        let mut kf: KalmanFilter<f32, U1, U1, U1> = KalmanFilter::default();
 
         for i in 0..1000 {
             let zf = i as f32;
