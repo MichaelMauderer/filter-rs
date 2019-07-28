@@ -7,7 +7,20 @@ use nalgebra::base::dimension::DimName;
 use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, Real, VectorN};
 
 #[allow(non_snake_case)]
-struct KalmanFilter<F, DimX, DimZ, DimU>
+struct FilterOutputSample<F, DimX>
+where
+    F: Real,
+    DimX: DimName,
+    DefaultAllocator: Allocator<F, DimX> + Allocator<F, DimX, DimX>,
+{
+    means: VectorN<F, DimX>,
+    covariance: MatrixMN<F, DimX, DimX>,
+    means_predictions: VectorN<F, DimX>,
+    covariance_predictions: MatrixMN<F, DimX, DimX>,
+}
+
+#[allow(non_snake_case)]
+pub struct KalmanFilter<F, DimX, DimZ, DimU>
 where
     F: Real,
     DimX: DimName,
@@ -155,28 +168,106 @@ where
         let R = R.unwrap_or(&self.R);
         let H = H.unwrap_or(&self.H);
 
-        self.y = z - H * self.x.clone();
+        self.y = z - H * &self.x;
 
         let PHT = self.P.clone() * H.transpose();
-        self.S = H * PHT.clone() + R;
+        self.S = H * &PHT + R;
 
         self.SI = self.S.clone().try_inverse().unwrap();
 
-        self.K = PHT * self.SI.clone();
+        self.K = PHT * &self.SI;
 
-        self.x = self.x.clone() + self.K.clone() * self.y.clone();
+        self.x = &self.x + &self.K * &self.y;
 
-        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - self.K.clone() * H;
-        self.P = ((I_KH.clone() * self.P.clone()) * I_KH.transpose())
-            + ((self.K.clone() * R) * self.K.clone().transpose());
+        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - &self.K * H;
+        self.P =
+            ((I_KH.clone() * &self.P) * I_KH.transpose()) + ((&self.K * R) * &self.K.transpose());
 
-        //
-        //        # save measurement and posterior state
         self.z = Some(z.clone());
         self.x_post = self.x.clone();
         self.P_post = self.P.clone();
+    }
 
-        (&self.x, &self.P)
+
+    pub fn predict_steadystate(
+        &mut self,
+        u: Option<&VectorN<F, DimU>>,
+        B: Option<&MatrixMN<F, DimX, DimU>>,
+    ) {
+        let B = if B.is_some() { B } else { self.B.as_ref() };
+
+        if B.is_some() && u.is_some() {
+            self.x = &self.F * &self.x + B.unwrap() * u.unwrap();
+        } else {
+            self.x = &self.F * &self.x;
+        }
+
+        self.x_prior = self.x.clone();
+        self.P_prior = self.P.clone();
+    }
+
+    pub fn update_steadystate(&mut self, z: &VectorN<F, DimZ>) {
+        self.y = z - &self.H * &self.x;
+        self.x = &self.x + &self.K * &self.y;
+
+        self.z = Some(z.clone());
+        self.x_post = self.x.clone();
+        self.P_post = self.P.clone();
+    }
+
+    pub fn get_prediction(
+        &self,
+        u: Option<&VectorN<F, DimU>>,
+    ) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
+        let Q = &self.Q;
+        let F = &self.F;
+        let P = &self.P;
+        let FT = F.transpose();
+
+        let B = self.B.as_ref();
+        let x = {
+            if B.is_some() && u.is_some() {
+                F * &self.x + B.unwrap() * u.unwrap()
+            } else {
+                F * &self.x
+            }
+        };
+
+        let P = ((F * P) * FT) * self.alpha_sq + Q;
+
+        (x, P)
+    }
+
+    pub fn get_update(&self, z: &VectorN<F, DimZ>) -> (VectorN<F, DimX>, MatrixMN<F, DimX, DimX>) {
+        let R = &self.R;
+        let H = &self.H;
+        let P = &self.P;
+        let x = &self.x;
+
+        let y = z - H * &self.x;
+
+        let PHT = &(P * H.transpose());
+
+        let S = H * PHT + R;
+        let SI = S.try_inverse().unwrap();
+
+        let K = &(PHT * SI);
+
+        let x = x + K * y;
+
+        let I_KH = &(DMatrix::identity(DimX::dim(), DimX::dim()) - (K * H));
+
+        let P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * &K.transpose());
+
+        (x, P)
+    }
+
+    pub fn residual_of(&self, z: &VectorN<F, DimZ>) -> VectorN<F, DimZ> {
+        z - (&self.H * &self.x_prior)
+    }
+
+    pub fn measurement_of_state(&self, x: &VectorN<F, DimX>) -> VectorN<F, DimZ> {
+        &self.H * x
     }
 }
 
