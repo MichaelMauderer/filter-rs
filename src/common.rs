@@ -1,7 +1,7 @@
 /*!
 Provides utility functions used in other parts of the library.
 */
-use std::num::Wrapping;
+use core::num::Wrapping;
 
 use num_traits::Float;
 

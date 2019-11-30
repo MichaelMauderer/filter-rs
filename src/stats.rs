@@ -1,7 +1,7 @@
 /*!
 Provides statics related utility functions used in other parts of the library.
 */
-use std::ops::{Add, Mul};
+use core::ops::{Add, Mul};
 
 use num_traits::Float;
 
