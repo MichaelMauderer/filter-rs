@@ -3,10 +3,10 @@ Provides implementations of and related to Discrete Bayes filtering.
 */
 use num_traits::Float;
 
-use crate::common::convolve;
-use crate::common::shift;
-use crate::common::ConvolutionMode;
-use crate::common::ShiftMode;
+#[cfg(feature = "std")]
+use crate::common::vec::{convolve, ConvolutionMode};
+#[cfg(feature = "std")]
+use crate::common::vec::{shift, ShiftMode};
 
 /// Normalize distribution `pdf` in-place so it sums to 1.0.
 ///
@@ -35,6 +35,7 @@ pub fn normalize<F: Float>(pdf: &mut [F]) {
 /// will be the likelihood of a measurement matching your current environment,
 /// and the prior comes from discrete_bayes.predict().
 ///
+#[cfg(feature = "std")]
 pub fn update<F: Float>(likelihood: &[F], prior: &[F]) -> Result<Vec<F>, ()> {
     if likelihood.len() != prior.len() {
         return Err(());
@@ -58,6 +59,7 @@ pub enum EdgeHandling<F> {
 }
 
 /// Performs the discrete Bayes filter prediction step, generating the prior.
+#[cfg(feature = "std")]
 pub fn predict<F: Float>(pdf: &[F], offset: i64, kernel: &[F], mode: EdgeHandling<F>) -> Vec<F> {
     match mode {
         EdgeHandling::Constant(c) => convolve(
@@ -73,7 +75,7 @@ pub fn predict<F: Float>(pdf: &[F], offset: i64, kernel: &[F], mode: EdgeHandlin
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature="std"))]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
 
