@@ -1,8 +1,6 @@
 /*!
 Provides utility functions used in other parts of the library.
 */
-use std::num::Wrapping;
-
 use num_traits::Float;
 
 /// Determines how the convolution is computed. This mostly affects behaviour at the boundaries.
@@ -71,7 +69,7 @@ fn convolve_wrap<F: Float>(signal: &[F], window: &[F]) -> Vec<F> {
 fn roll<T: Copy>(a: &[T], shift: i64) -> Vec<T> {
     let mut out = Vec::with_capacity(a.len());
     for i in 0..a.len() as i64 {
-        let ix = (Wrapping(i) - Wrapping(shift)).0 % (a.len() as i64);
+        let ix = i.wrapping_sub(shift) % (a.len() as i64);
         let ix = if ix < 0 { ix + a.len() as i64 } else { ix };
         out.push(a[ix as usize])
     }
