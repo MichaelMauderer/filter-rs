@@ -9,7 +9,7 @@ readme = "README.md"
 description = "Kalman filters and other optimal and non-optimal estimation filters in Rust."
 
 [dependencies]
-nalgebra = "0.18"
+nalgebra = { version = "0.18", default-features = false }
 num-traits = "0.2"
 
 [dev-dependencies]
