@@ -305,7 +305,7 @@ mod tests {
 
         for i in 0..1000 {
             let zf = i as f32;
-            let z = Vector1::from_vec(vec![zf]);
+            let z = Vector1::new(zf);
             kf.predict(None, None, None, None);
             kf.update(&z, None, None);
             assert_approx_eq!(zf, kf.z.clone().unwrap()[0]);
@@ -326,17 +326,14 @@ mod tests {
         kf.R = Matrix1::new(5.0);
         kf.Q = Matrix2::repeat(0.0001);
 
-        let mut results = Vec::default();
         for t in 0..100 {
             let z = Vector1::new(t as f64);
             kf.update(&z, None, None);
             kf.predict(None, None, None, None);
-            results.push(kf.x.clone());
-        }
-        // This matches the results from an equivalent filterpy filter.
-        assert_approx_eq!(results[0][0], 0.0099502487);
-        for i in 1..100 {
-            assert_approx_eq!(results[i][0], i as f64 + 1.0, 0.05)
+            // This matches the results from an equivalent filterpy filter.
+            assert_approx_eq!(kf.x[0],
+                              if t == 0 { 0.0099502487 } else { t as f64 + 1.0 },
+                              0.05);
         }
     }
 }
