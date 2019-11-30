@@ -11,6 +11,8 @@ description = "Kalman filters and other optimal and non-optimal estimation filte
 [dependencies]
 nalgebra = "0.18"
 num-traits = "0.2"
+
+[dev-dependencies]
 assert_approx_eq = "1.1.0"
 
 [features]
