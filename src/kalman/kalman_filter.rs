@@ -4,7 +4,7 @@ This module implements the linear Kalman filter
 
 use nalgebra::allocator::Allocator;
 use nalgebra::base::dimension::DimName;
-use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, RealField, VectorN};
+use nalgebra::{DefaultAllocator, MatrixMN, RealField, VectorN};
 
 /// Implements a Kalman filter.
 /// For a detailed explanation, see the excellent book Kalman and Bayesian
@@ -131,7 +131,7 @@ impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
 
         self.x = &self.x + &self.K * &self.y;
 
-        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - &self.K * H;
+        let I_KH = MatrixMN::<F, DimX, DimX>::identity() - &self.K * H;
         self.P =
             ((I_KH.clone() * &self.P) * I_KH.transpose()) + ((&self.K * R) * &self.K.transpose());
 
@@ -212,7 +212,7 @@ impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
 
         let x = x + K * y;
 
-        let I_KH = &(DMatrix::identity(DimX::dim(), DimX::dim()) - (K * H));
+        let I_KH = &(MatrixMN::<F, DimX, DimX>::identity() - (K * H));
 
         let P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * &K.transpose());
 
