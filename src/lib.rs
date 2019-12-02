@@ -11,6 +11,7 @@ trivial_casts, trivial_numeric_casts, unsafe_code, unstable_features, unused_imp
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod common;
+#[cfg(feature = "std")]
 pub mod discrete_bayes;
 pub mod gh;
 pub mod kalman;
