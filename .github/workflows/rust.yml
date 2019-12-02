@@ -15,3 +15,9 @@ jobs:
       run: cargo clippy
     - name: Run tests
       run: cargo test --verbose
+    - name: Run tests for no_std
+      run: cargo test --verbose --no-default-features
+    - name: Install `cargo-nono`
+      run: cargo install cargo-nono
+    - name: Test that the library (and all dependencies) work for no_std
+      run: cargo nono check
