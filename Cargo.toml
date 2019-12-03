@@ -8,6 +8,9 @@ license = "MIT"
 readme = "README.md"
 description = "Kalman filters and other optimal and non-optimal estimation filters in Rust."
 
+categories = ["algorithms", "science", "no-std"]
+keywords = ["filters", "kalman", "signal-processing"]
+
 [dependencies]
 nalgebra = { version = "0.18", default-features = false }
 num-traits = "0.2"
