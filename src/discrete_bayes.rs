@@ -1,12 +1,11 @@
 /*!
 Provides implementations of and related to Discrete Bayes filtering.
 */
+use alloc::vec::Vec;
 use num_traits::Float;
 
-use crate::common::convolve;
-use crate::common::shift;
-use crate::common::ConvolutionMode;
-use crate::common::ShiftMode;
+use crate::common::vec::{convolve, ConvolutionMode};
+use crate::common::vec::{shift, ShiftMode};
 
 /// Normalize distribution `pdf` in-place so it sums to 1.0.
 ///
@@ -73,7 +72,7 @@ pub fn predict<F: Float>(pdf: &[F], offset: i64, kernel: &[F], mode: EdgeHandlin
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature="std"))]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
 

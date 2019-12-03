@@ -4,7 +4,7 @@ This module implements the linear Kalman filter
 
 use nalgebra::allocator::Allocator;
 use nalgebra::base::dimension::DimName;
-use nalgebra::{DMatrix, DefaultAllocator, MatrixMN, RealField, VectorN};
+use nalgebra::{DefaultAllocator, MatrixMN, RealField, VectorN};
 
 /// Implements a Kalman filter.
 /// For a detailed explanation, see the excellent book Kalman and Bayesian
@@ -131,7 +131,7 @@ impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
 
         self.x = &self.x + &self.K * &self.y;
 
-        let I_KH = DMatrix::identity(DimX::dim(), DimX::dim()) - &self.K * H;
+        let I_KH = MatrixMN::<F, DimX, DimX>::identity() - &self.K * H;
         self.P =
             ((I_KH.clone() * &self.P) * I_KH.transpose()) + ((&self.K * R) * &self.K.transpose());
 
@@ -212,7 +212,7 @@ impl<F, DimX, DimZ, DimU> KalmanFilter<F, DimX, DimZ, DimU>
 
         let x = x + K * y;
 
-        let I_KH = &(DMatrix::identity(DimX::dim(), DimX::dim()) - (K * H));
+        let I_KH = &(MatrixMN::<F, DimX, DimX>::identity() - (K * H));
 
         let P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * &K.transpose());
 
@@ -305,7 +305,7 @@ mod tests {
 
         for i in 0..1000 {
             let zf = i as f32;
-            let z = Vector1::from_vec(vec![zf]);
+            let z = Vector1::new(zf);
             kf.predict(None, None, None, None);
             kf.update(&z, None, None);
             assert_approx_eq!(zf, kf.z.clone().unwrap()[0]);
@@ -326,17 +326,14 @@ mod tests {
         kf.R = Matrix1::new(5.0);
         kf.Q = Matrix2::repeat(0.0001);
 
-        let mut results = Vec::default();
         for t in 0..100 {
             let z = Vector1::new(t as f64);
             kf.update(&z, None, None);
             kf.predict(None, None, None, None);
-            results.push(kf.x.clone());
-        }
-        // This matches the results from an equivalent filterpy filter.
-        assert_approx_eq!(results[0][0], 0.0099502487);
-        for i in 1..100 {
-            assert_approx_eq!(results[i][0], i as f64 + 1.0, 0.05)
+            // This matches the results from an equivalent filterpy filter.
+            assert_approx_eq!(kf.x[0],
+                              if t == 0 { 0.0099502487 } else { t as f64 + 1.0 },
+                              0.05);
         }
     }
 }

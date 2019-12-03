@@ -1,109 +1,113 @@
 /*!
 Provides utility functions used in other parts of the library.
 */
-use std::num::Wrapping;
 
-use num_traits::Float;
+#[cfg(feature = "alloc")]
+pub(crate) mod vec {
+    use alloc::vec::Vec;
+    use core::num::Wrapping;
+    use num_traits::Float;
 
-/// Determines how the convolution is computed. This mostly affects behaviour at the boundaries.
-#[derive(Debug)]
-pub(crate) enum ConvolutionMode<F> {
-    /// Returns the convolution at each point of overlap, assuming the signals wrap around.
-    Wrap,
-    /// Returns the convolution at each point of overlap, assuming the signals
-    /// are extended by the given value.
-    Extended(F),
-}
-
-/// Compute the discrete convolution of the two slices.
-/// This might be slow, as this function is not optimised in any way.
-pub(crate) fn convolve<F: Float>(a: &[F], b: &[F], mode: ConvolutionMode<F>) -> Vec<F> {
-    let (a, b) = if a.len() < b.len() { (b, a) } else { (a, b) };
-
-    match mode {
-        ConvolutionMode::Wrap => convolve_wrap(a, b),
-        ConvolutionMode::Extended(c) => convolve_extended(a, b, c),
+    /// Determines how the convolution is computed. This mostly affects behaviour at the boundaries.
+    #[derive(Debug)]
+    pub(crate) enum ConvolutionMode<F> {
+        /// Returns the convolution at each point of overlap, assuming the signals wrap around.
+        Wrap,
+        /// Returns the convolution at each point of overlap, assuming the signals
+        /// are extended by the given value.
+        Extended(F),
     }
-}
 
-fn convolve_extended<F: Float>(signal: &[F], window: &[F], c: F) -> Vec<F> {
-    let m = signal.len() as i64;
-    let n = window.len() as i64;
-    debug_assert!(m >= n);
+    /// Compute the discrete convolution of the two slices.
+    /// This might be slow, as this function is not optimised in any way.
+    pub(crate) fn convolve<F: Float>(a: &[F], b: &[F], mode: ConvolutionMode<F>) -> Vec<F> {
+        let (a, b) = if a.len() < b.len() { (b, a) } else { (a, b) };
 
-    let mut result = Vec::default();
-    for i in 0..m {
-        let mut x = F::zero();
-        for j in 0..n {
-            let s_ij = {
-                let ix = i - j + (n / 2);
-                *signal.get(ix as usize).unwrap_or(&c)
-            };
-            let w_ij = *window.get(j as usize).unwrap_or(&c);
-            x = x + s_ij * w_ij;
-        }
-        result.push(x)
-    }
-    result
-}
-
-fn convolve_wrap<F: Float>(signal: &[F], window: &[F]) -> Vec<F> {
-    let m = signal.len() as i64;
-    let n = window.len() as i64;
-    debug_assert!(m >= n);
-
-    let mut result = Vec::with_capacity(m as usize);
-    result.resize_with(m as usize, F::zero);
-
-    for i in 0..m {
-        for j in 0..n {
-            let s_ij = {
-                let ix = (m + i - j + (n / 2)) % m;
-                signal[ix as usize]
-            };
-            let w_ij = window[j as usize];
-            result[i as usize] = result[i as usize] + (s_ij * w_ij);
+        match mode {
+            ConvolutionMode::Wrap => convolve_wrap(a, b),
+            ConvolutionMode::Extended(c) => convolve_extended(a, b, c),
         }
     }
-    result
-}
 
-fn roll<T: Copy>(a: &[T], shift: i64) -> Vec<T> {
-    let mut out = Vec::with_capacity(a.len());
-    for i in 0..a.len() as i64 {
-        let ix = (Wrapping(i) - Wrapping(shift)).0 % (a.len() as i64);
-        let ix = if ix < 0 { ix + a.len() as i64 } else { ix };
-        out.push(a[ix as usize])
+    fn convolve_extended<F: Float>(signal: &[F], window: &[F], c: F) -> Vec<F> {
+        let m = signal.len() as i64;
+        let n = window.len() as i64;
+        debug_assert!(m >= n);
+
+        let mut result = Vec::default();
+        for i in 0..m {
+            let mut x = F::zero();
+            for j in 0..n {
+                let s_ij = {
+                    let ix = i - j + (n / 2);
+                    *signal.get(ix as usize).unwrap_or(&c)
+                };
+                let w_ij = *window.get(j as usize).unwrap_or(&c);
+                x = x + s_ij * w_ij;
+            }
+            result.push(x)
+        }
+        result
     }
-    out
-}
 
-fn shift_extend<T: Copy>(a: &[T], shift: i64, value: T) -> Vec<T> {
-    let mut out: Vec<T> = Vec::with_capacity(a.len());
-    for i in 0..a.len() as i64 {
-        let ix = i - shift;
-        out.push(*a.get(ix as usize).unwrap_or(&value))
+    fn convolve_wrap<F: Float>(signal: &[F], window: &[F]) -> Vec<F> {
+        let m = signal.len() as i64;
+        let n = window.len() as i64;
+        debug_assert!(m >= n);
+
+        let mut result = Vec::with_capacity(m as usize);
+        result.resize_with(m as usize, F::zero);
+
+        for i in 0..m {
+            for j in 0..n {
+                let s_ij = {
+                    let ix = (m + i - j + (n / 2)) % m;
+                    signal[ix as usize]
+                };
+                let w_ij = window[j as usize];
+                result[i as usize] = result[i as usize] + (s_ij * w_ij);
+            }
+        }
+        result
     }
-    out
-}
 
-pub(crate) enum ShiftMode<F> {
-    Wrap,
-    Extend(F),
-}
+    pub(super) fn roll<T: Copy>(a: &[T], shift: i64) -> Vec<T> {
+        let mut out = Vec::with_capacity(a.len());
+        for i in 0..a.len() as i64 {
+            let ix = (Wrapping(i) - Wrapping(shift)).0 % (a.len() as i64);
+            let ix = if ix < 0 { ix + a.len() as i64 } else { ix };
+            out.push(a[ix as usize])
+        }
+        out
+    }
 
-pub(crate) fn shift<T: Copy>(a: &[T], shift: i64, mode: ShiftMode<T>) -> Vec<T> {
-    match mode {
-        ShiftMode::Wrap => roll(a, shift),
-        ShiftMode::Extend(c) => shift_extend(a, shift, c),
+    pub(super) fn shift_extend<T: Copy>(a: &[T], shift: i64, value: T) -> Vec<T> {
+        let mut out: Vec<T> = Vec::with_capacity(a.len());
+        for i in 0..a.len() as i64 {
+            let ix = i - shift;
+            out.push(*a.get(ix as usize).unwrap_or(&value))
+        }
+        out
+    }
+
+    pub(crate) enum ShiftMode<F> {
+        Wrap,
+        Extend(F),
+    }
+
+    pub(crate) fn shift<T: Copy>(a: &[T], shift: i64, mode: ShiftMode<T>) -> Vec<T> {
+        match mode {
+            ShiftMode::Wrap => roll(a, shift),
+            ShiftMode::Extend(c) => shift_extend(a, shift, c),
+        }
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature="std"))]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
-
-    use super::*;
+    use num_traits::Float;
+    use super::vec::*;
 
     #[test]
     fn test_convolve_extended() {
