@@ -2,8 +2,9 @@
 Provides utility functions used in other parts of the library.
 */
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub(crate) mod vec {
+    use alloc::vec::Vec;
     use core::num::Wrapping;
     use num_traits::Float;
 
