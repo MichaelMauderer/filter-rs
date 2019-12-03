@@ -13,4 +13,5 @@ pub mod common;
 pub mod discrete_bayes;
 pub mod gh;
 pub mod kalman;
+pub mod moving_averages;
 pub mod stats;
