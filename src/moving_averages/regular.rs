@@ -34,10 +34,12 @@ where
     }
 
     /// TODO
-    pub fn update(&mut self, value: VectorN<F, DimX>) {
+    pub fn update(&mut self, value: VectorN<F, DimX>) -> &VectorN<F, DimX> {
         // e = α v + (1-α) e
         self.estimate *= F::one() - self.coef;
         self.estimate += value * self.coef;
+
+        &self.estimate
     }
 
     /// TODO
