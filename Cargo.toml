@@ -1,6 +1,6 @@
 [package]
 name = "filter"
-version = "0.2.0"
+version = "0.2.1-dev"
 authors = ["Michael Mauderer <michael@michaelmauderer.com>"]
 edition = "2018"
 repository = "https://github.com/MichaelMauderer/filter-rs"
