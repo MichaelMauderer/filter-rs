@@ -17,7 +17,7 @@ statically checked and are always correct at runtime.
 
 GH Filter
 ----------
-We will demonstrate the workings of the GH filter by running through a toy problem from R Labbe.
+We will demonstrate the workings of the GH filter by running through a toy problem from R Labbe's book.
 We want to track our weight on a daily basis:
 
 ```
