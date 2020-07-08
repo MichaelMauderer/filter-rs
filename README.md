@@ -17,15 +17,28 @@ statically checked and are always correct at runtime.
 
 GH Filter
 ----------
+We will demonstrate the workings of the GH filter by running through a toy problem from R Labbe's book.
+We want to track our weight on a daily basis:
+
 ```
-let x0 = 0.0;
-let dx0 = 0.0;
-let g = 0.2;
-let h - 0.2;
-let dt = 0.01;
+// Start at 160 pounds, assuming to gain a pound every day
+let x0 = 160.;
+let dx0 = 1.;
 
-let fgh = GHFilter::new(x0, dx0, g, h, dt);
+// Set the filter parameters
+let g = 0.6;
+let h = 2./3.;
+let dt = 1.;
 
+// Apply the GH filter
+let mut gh_filter = GHFilter::new(x0, dx0, g, h, dt);
+
+let weights =
+    [158.0, 164.2, 160.3, 159.9, 162.1, 164.6, 169.6, 167.4, 166.4, 171.0, 171.2, 172.6];
+
+for w in &weights {
+    println!("Filtered weight: {:.1}", gh_filter.update(*w));
+}
 ```
 
 Univariate Kalman Filter
